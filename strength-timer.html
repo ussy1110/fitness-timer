@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="筋トレ20分">
+<title>火木・筋トレ20分</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+  :root{
+    --paper:#EDEAE2;
+    --ink:#232823;
+    --ink-soft:#5b6058;
+    --mobility:#A9713C;
+    --core:#9C5B46;
+    --upper:#2F5D62;
+    --lower:#5C6B3E;
+    --line: rgba(35,40,35,0.12);
+    --phase-color: var(--mobility);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans JP', sans-serif;
+    overscroll-behavior:none;
+    -webkit-user-select:none; user-select:none;
+  }
+  #app{
+    max-width:480px; margin:0 auto;
+    min-height:100dvh;
+    display:flex; flex-direction:column;
+    padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  }
+
+  /* ---- Header / phase dots ---- */
+  .phase-track{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom: 28px;
+  }
+  .phase-dot{
+    flex:1; text-align:center; position:relative;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.04em;
+    color: var(--ink-soft);
+    padding-bottom:10px;
+    border-bottom: 3px solid var(--line);
+    transition: border-color .3s, color .3s;
+  }
+  .phase-dot.active{ color: var(--phase-color); border-color: var(--phase-color); font-weight:600;}
+  .phase-dot.done{ color: var(--ink); border-color: var(--ink-soft); }
+  .phase-dot .num{ display:block; font-size:16px; margin-bottom:2px; }
+
+  /* ---- Setup screen ---- */
+  .screen{ flex:1; display:flex; flex-direction:column; }
+  .hidden{ display:none !important; }
+
+  h1{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    font-size: 26px;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .sub{ color:var(--ink-soft); font-size:14px; margin-bottom:28px; }
+
+  .level-options{ display:flex; flex-direction:column; gap:10px; margin-bottom: auto;}
+  .level-btn{
+    text-align:left;
+    border:1.5px solid var(--line);
+    background: transparent;
+    border-radius:14px;
+    padding:16px 18px;
+    font-family:inherit;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .level-btn .lv-title{ font-weight:700; font-size:16px; display:block; margin-bottom:3px;}
+  .level-btn .lv-desc{ font-size:12.5px; color:var(--ink-soft); }
+  .level-btn.selected{ border-color: var(--ink); background: rgba(35,40,35,0.045); }
+
+  .start-btn{
+    margin-top:24px;
+    width:100%;
+    padding:18px;
+    border:none; border-radius:14px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size:16px; font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .start-btn:disabled{ opacity:.35; }
+
+  /* ---- Run screen ---- */
+  .run-screen{ flex:1; display:flex; flex-direction:column; align-items:center; }
+  .phase-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:16px; letter-spacing:.06em;
+    color: var(--phase-color);
+    font-weight:700;
+    margin-bottom:8px;
+  }
+  .exercise-name{
+    font-family:'Source Serif 4', serif;
+    font-weight:700;
+    font-size: 38px;
+    text-align:center;
+    line-height:1.25;
+    margin: 0 0 8px;
+    min-height: 92px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .exercise-note{
+    color:var(--ink-soft); font-size:16px; text-align:center;
+    min-height: 42px; padding:0 6px; margin-bottom:16px;
+  }
+
+  .timer-ring{
+    position:relative;
+    width:250px; height:250px;
+    margin: 4px auto 20px;
+  }
+  .timer-ring svg{ transform:rotate(-90deg); width:100%; height:100%; }
+  .ring-bg{ fill:none; stroke: var(--line); stroke-width:8; }
+  .ring-fg{ fill:none; stroke: var(--phase-color); stroke-width:8; stroke-linecap:round; transition: stroke-dashoffset 1s linear; }
+  .timer-num{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:76px; font-weight:700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .progress-line{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px; color:var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .next-preview{
+    font-family:'Noto Sans JP', sans-serif;
+    font-size:13px; color:var(--ink-soft);
+    margin-bottom: 20px;
+    min-height: 18px;
+  }
+
+  .controls{
+    width:100%;
+    display:flex; align-items:center; gap:12px;
+    margin-top:auto;
+  }
+  .ctrl-btn{
+    border:1.5px solid var(--line);
+    background:transparent;
+    border-radius:12px;
+    padding:16px 0;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px; color:var(--ink);
+    cursor:pointer;
+    flex: 0 0 64px;
+    text-align:center;
+  }
+  .play-btn{
+    flex:1;
+    border:none;
+    border-radius:12px;
+    background: var(--phase-color);
+    color: var(--paper);
+    padding:16px 0;
+    font-size:16px; font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+  }
+
+  .footer-row{
+    display:flex; justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px; color:var(--ink-soft);
+    margin-top:14px;
+  }
+  .sound-toggle{
+    background:none; border:none; color:var(--ink-soft);
+    font-family:inherit; font-size:11.5px; cursor:pointer;
+    text-decoration:underline; padding:0;
+  }
+
+  /* ---- Done screen ---- */
+  .done-screen{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+  .done-screen h1{ font-size:28px; }
+  .done-stats{ font-family:'IBM Plex Mono', monospace; color:var(--ink-soft); font-size:14px; margin-bottom:32px;}
+
+  .flash{
+    animation: flashfx 0.5s ease-out;
+  }
+  @keyframes flashfx{
+    0%{ background: var(--phase-color); }
+    100%{ background: var(--paper); }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- SETUP SCREEN -->
+  <div id="setupScreen" class="screen">
+    <h1>火木・筋トレ20分</h1>
+    <div class="sub">今日のBBレベルを選んでください</div>
+    <div class="level-options" id="levelOptions">
+      <button class="level-btn" data-level="normal">
+        <span class="lv-title">🟢 BB50以上・通常</span>
+        <span class="lv-desc">全フェーズ／上下半身2セット・約20分</span>
+      </button>
+      <button class="level-btn" data-level="mid">
+        <span class="lv-title">🟡 BB35〜49・軽め</span>
+        <span class="lv-desc">全フェーズ／上半身・下半身は1周のみ・約13分</span>
+      </button>
+      <button class="level-btn" data-level="low">
+        <span class="lv-title">🔴 BB34以下・ストレッチのみ</span>
+        <span class="lv-desc">胸椎モビリティのみ・約3分</span>
+      </button>
+    </div>
+    <button class="start-btn" id="startBtn" disabled>開始</button>
+  </div>
+
+  <!-- RUN SCREEN -->
+  <div id="runScreen" class="screen run-screen hidden">
+    <div class="phase-track" id="phaseTrack"></div>
+
+    <div class="phase-label" id="phaseLabel">胸椎モビリティ</div>
+    <div class="exercise-name" id="exerciseName">胸椎ツイスト（右）</div>
+    <div class="exercise-note" id="exerciseNote">肩は床につけたまま、抱えた膝を反対側へ倒す</div>
+
+    <div class="timer-ring">
+      <svg viewBox="0 0 100 100">
+        <circle class="ring-bg" cx="50" cy="50" r="44"></circle>
+        <circle class="ring-fg" id="ringFg" cx="50" cy="50" r="44"></circle>
+      </svg>
+      <div class="timer-num" id="timerNum">0:45</div>
+    </div>
+
+    <div class="progress-line" id="progressLine">1 / 4</div>
+    <div class="next-preview" id="nextPreview"></div>
+
+    <div class="controls">
+      <button class="ctrl-btn" id="prevBtn">◀ 前へ</button>
+      <button class="play-btn" id="playBtn">一時停止</button>
+      <button class="ctrl-btn" id="nextBtn">次へ ▶</button>
+    </div>
+    <div class="footer-row">
+      <span id="elapsedLabel">経過 0:00</span>
+      <button class="sound-toggle" id="soundToggle">🔇 音を鳴らす</button>
+      <span id="remainLabel">残り 14:00</span>
+    </div>
+  </div>
+
+  <!-- DONE SCREEN -->
+  <div id="doneScreen" class="screen done-screen hidden">
+    <h1>おつかれさまでした</h1>
+    <div class="done-stats" id="doneStats"></div>
+    <button class="start-btn" id="restartBtn" style="width:auto; padding:16px 32px;">もう一度</button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const PHASES_FULL = [
+    { id:'mobility', name:'胸椎モビリティ', color:'#A9713C', ex:[
+      {name:'胸椎ツイスト（右）', sec:45, note:'肩は床につけたまま、抱えた膝を左へ倒す'},
+      {name:'胸椎ツイスト（左）', sec:45, note:'反対側も同様に、腹圧はキープ'},
+      {name:'うつ伏せ胸椎伸展', sec:45, note:'骨盤を床に押し付けたまま上体を起こす'},
+      {name:'パピー→キャット', sec:45, note:'胸を床へ→背中を丸める、をゆっくり往復'},
+    ]},
+    { id:'cardio', name:'心拍アップ', color:'#B5533C', ex:[
+      {name:'その場マーチ', sec:60, note:'ももを高く上げて、腕もしっかり振る'},
+      {name:'ステップタッチ', sec:60, note:'横に一歩ずつ、リズムよく体重移動'},
+    ]},
+    { id:'core', name:'コア', color:'#9C5B46', ex:[
+      {name:'デッドバグ', sec:60, note:'腰を床から浮かせず、対角の手足を伸ばす'},
+      {name:'バードドッグ（右）', sec:60, note:'骨盤を動かさず、ニュートラルを保つ'},
+      {name:'バードドッグ（左）', sec:60, note:'反対側も同様に'},
+    ]},
+    { id:'balance', name:'バランス', color:'#6B7D8C', ex:[
+      {name:'片脚立ち（右）', sec:30, note:'目線は正面、グラつく前に軽く指先で壁に触れてOK'},
+      {name:'片脚立ち（左）', sec:30, note:'反対側も同様に'},
+    ]},
+    { id:'upper', name:'上半身', color:'#2F5D62', ex:[
+      {name:'膝つきプッシュアップ', sec:45, note:'頭から膝まで一直線、脇を軽く締める'},
+      {name:'ダンベルロウ', sec:45, note:'肩をすくめず、肩甲骨から引く'},
+      {name:'休憩（セット間インターバル）', sec:20, note:''},
+      {name:'膝つきプッシュアップ', sec:45, note:'腰が反らないように'},
+      {name:'ダンベルロウ', sec:45, note:''},
+    ]},
+    { id:'lower', name:'下半身', color:'#5C6B3E', ex:[
+      {name:'スクワット', sec:45, note:'膝がつま先より内側に入らないように'},
+      {name:'ヒップヒンジ', sec:45, note:'膝は軽く曲げたまま、お尻を後ろに引いて前傾。背中は丸めない'},
+      {name:'ランジ（左右交互）', sec:60, note:'上体を起こしたまま、膝がつま先より前に出過ぎないように'},
+      {name:'グルートブリッジ', sec:45, note:'お尻を締めて骨盤を持ち上げる'},
+      {name:'休憩（セット間インターバル）', sec:20, note:''},
+      {name:'スクワット', sec:45, note:''},
+      {name:'ヒップヒンジ', sec:45, note:''},
+      {name:'ランジ（左右交互）', sec:60, note:''},
+      {name:'グルートブリッジ', sec:45, note:''},
+      {name:'相撲スクワット', sec:70, note:'脚を大きく開き、つま先は外側45度。膝はつま先と同じ方向へ'},
+    ]},
+  ];
+
+  function buildLevel(level){
+    if(level === 'low'){
+      return [PHASES_FULL[0]];
+    }
+    if(level === 'mid'){
+      const trim = (phase, n) => ({ ...phase, ex: phase.ex.slice(0, n) });
+      return [PHASES_FULL[0], PHASES_FULL[1], PHASES_FULL[2], PHASES_FULL[3], trim(PHASES_FULL[4], 2), trim(PHASES_FULL[5], 4)];
+    }
+    return PHASES_FULL;
+  }
+
+  let phases = [];
+  let flatList = []; // {phaseIdx, exIdx, name, sec, note, color, phaseName}
+  let current = 0;
+  let remaining = 0;
+  let timerId = null;
+  let running = false;
+  let elapsedTotal = 0;
+  let soundOn = false;
+  let audioCtx = null;
+
+  const setupScreen = document.getElementById('setupScreen');
+  const runScreen = document.getElementById('runScreen');
+  const doneScreen = document.getElementById('doneScreen');
+  const levelOptions = document.getElementById('levelOptions');
+  const startBtn = document.getElementById('startBtn');
+  let selectedLevel = null;
+
+  levelOptions.addEventListener('click', (e) => {
+    const btn = e.target.closest('.level-btn');
+    if(!btn) return;
+    [...levelOptions.children].forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedLevel = btn.dataset.level;
+    startBtn.disabled = false;
+  });
+
+  startBtn.addEventListener('click', () => {
+    phases = buildLevel(selectedLevel);
+    flatList = [];
+    phases.forEach((p, pi) => {
+      p.ex.forEach((e) => {
+        flatList.push({ phaseIdx: pi, name: e.name, sec: e.sec, note: e.note, color: p.color, phaseName: p.name });
+      });
+    });
+    current = 0;
+    elapsedTotal = 0;
+    running = true;
+    setupScreen.classList.add('hidden');
+    runScreen.classList.remove('hidden');
+    renderPhaseTrack();
+    startPrep(() => {
+      loadStep(0);
+      tick();
+    });
+  });
+
+  function startPrep(onDone){
+    let prepRemaining = 5;
+    document.documentElement.style.setProperty('--phase-color', '#5b6058');
+    document.getElementById('phaseLabel').textContent = '準備';
+    document.getElementById('exerciseName').textContent = 'まもなく開始';
+    document.getElementById('exerciseNote').textContent = '姿勢を整えてください';
+    document.getElementById('progressLine').textContent = '';
+    updatePhaseTrack(-1);
+    function renderPrep(){
+      const frac = prepRemaining / 5;
+      ringFg.style.strokeDashoffset = CIRC * (1 - frac);
+      document.getElementById('timerNum').textContent = prepRemaining;
+    }
+    renderPrep();
+    const prepTimer = setInterval(() => {
+      prepRemaining -= 1;
+      if(prepRemaining <= 0){
+        clearInterval(prepTimer);
+        beep();
+        flashScreen();
+        onDone();
+      } else {
+        renderPrep();
+      }
+    }, 1000);
+  }
+
+  function renderPhaseTrack(){
+    const track = document.getElementById('phaseTrack');
+    track.innerHTML = '';
+    phases.forEach((p, i) => {
+      const d = document.createElement('div');
+      d.className = 'phase-dot';
+      d.id = 'dot-' + i;
+      d.innerHTML = '<span class="num">' + (i+1) + '</span>' + p.name;
+      track.appendChild(d);
+    });
+  }
+
+  function updatePhaseTrack(activePhaseIdx){
+    phases.forEach((p, i) => {
+      const d = document.getElementById('dot-' + i);
+      d.classList.remove('active','done');
+      if(i < activePhaseIdx) d.classList.add('done');
+      if(i === activePhaseIdx) d.classList.add('active');
+    });
+  }
+
+  const ringFg = document.getElementById('ringFg');
+  const R = 44;
+  const CIRC = 2 * Math.PI * R;
+  ringFg.style.strokeDasharray = CIRC;
+
+  function loadStep(idx){
+    if(idx < 0) idx = 0;
+    if(idx >= flatList.length){
+      finish();
+      return;
+    }
+    current = idx;
+    const step = flatList[current];
+    remaining = step.sec;
+    document.documentElement.style.setProperty('--phase-color', step.color);
+    document.getElementById('phaseLabel').textContent = step.phaseName;
+    document.getElementById('exerciseName').textContent = step.name;
+    document.getElementById('exerciseNote').textContent = step.note;
+    document.getElementById('progressLine').textContent = (current+1) + ' / ' + flatList.length;
+    const nextItem = flatList[current+1];
+    const nextPreviewEl = document.getElementById('nextPreview');
+    if(step.isTransition || !nextItem){
+      nextPreviewEl.textContent = '';
+    } else {
+      nextPreviewEl.textContent = '次: ' + nextItem.name;
+    }
+    updatePhaseTrack(step.phaseIdx);
+    updateRing();
+    updateTimerLabel();
+    updateFooter();
+  }
+
+  function updateRing(){
+    const step = flatList[current];
+    const frac = remaining / step.sec;
+    ringFg.style.strokeDashoffset = CIRC * (1 - frac);
+  }
+
+  function updateTimerLabel(){
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    document.getElementById('timerNum').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function totalRemainingSec(){
+    let sum = remaining;
+    for(let i = current+1; i < flatList.length; i++) sum += flatList[i].sec;
+    return sum;
+  }
+
+  function updateFooter(){
+    const em = Math.floor(elapsedTotal/60), es = elapsedTotal%60;
+    document.getElementById('elapsedLabel').textContent = '経過 ' + em + ':' + (es<10?'0':'') + es;
+    const rem = totalRemainingSec();
+    const rm = Math.floor(rem/60), rs = rem%60;
+    document.getElementById('remainLabel').textContent = '残り ' + rm + ':' + (rs<10?'0':'') + rs;
+  }
+
+  function beep(){
+    if(!soundOn) return;
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + 0.3);
+    }catch(e){}
+  }
+
+  function flashScreen(){
+    document.getElementById('app').classList.remove('flash');
+    void document.getElementById('app').offsetWidth;
+    document.getElementById('app').classList.add('flash');
+  }
+
+  function tick(){
+    if(timerId) clearInterval(timerId);
+    timerId = setInterval(() => {
+      if(!running) return;
+      remaining -= 1;
+      elapsedTotal += 1;
+      if(remaining <= 0){
+        beep();
+        flashScreen();
+        loadStep(current + 1);
+      } else {
+        updateRing();
+        updateTimerLabel();
+        updateFooter();
+      }
+    }, 1000);
+  }
+
+  document.getElementById('playBtn').addEventListener('click', () => {
+    running = !running;
+    document.getElementById('playBtn').textContent = running ? '一時停止' : '再開';
+  });
+
+  document.getElementById('nextBtn').addEventListener('click', () => {
+    loadStep(current + 1);
+  });
+  document.getElementById('prevBtn').addEventListener('click', () => {
+    loadStep(current - 1);
+  });
+
+  document.getElementById('soundToggle').addEventListener('click', () => {
+    soundOn = !soundOn;
+    document.getElementById('soundToggle').textContent = soundOn ? '🔊 音を鳴らす' : '🔇 音を鳴らす';
+    if(soundOn && !audioCtx){
+      try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
+    }
+  });
+
+  function finish(){
+    clearInterval(timerId);
+    runScreen.classList.add('hidden');
+    doneScreen.classList.remove('hidden');
+    const m = Math.floor(elapsedTotal/60), s = elapsedTotal%60;
+    document.getElementById('doneStats').textContent = '合計時間　' + m + '分' + s + '秒';
+  }
+
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    doneScreen.classList.add('hidden');
+    setupScreen.classList.remove('hidden');
+    [...levelOptions.children].forEach(b => b.classList.remove('selected'));
+    selectedLevel = null;
+    startBtn.disabled = true;
+  });
+
+})();
+</script>
+</body>
+</html>
