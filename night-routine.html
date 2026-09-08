@@ -216,7 +216,7 @@
     </div>
     <div class="footer-row">
       <span id="elapsedLabel">経過 0:00</span>
-      <button class="sound-toggle" id="soundToggle">🔇 音を鳴らす</button>
+      <button class="sound-toggle" id="soundToggle">🔇 音声案内を鳴らす</button>
       <span id="remainLabel">残り 0:00</span>
     </div>
   </div>
@@ -285,6 +285,18 @@
     });
   }
 
+  function speak(text){
+    if(!soundOn) return;
+    try{
+      if(!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ja-JP';
+      u.rate = 0.95;
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
   function loadStep(idx){
     if(idx < 0) idx = 0;
     if(idx >= FLAT.length){ finish(); return; }
@@ -300,6 +312,7 @@
     updateRing();
     updateTimerLabel();
     updateFooter();
+    speak(step.name);
   }
 
   function updateRing(){
@@ -376,6 +389,7 @@
     document.getElementById('exerciseNote').textContent = '楽な姿勢になってください';
     document.getElementById('progressLine').textContent = '';
     updatePhaseTrack(-1);
+    speak('まもなく開始します');
     function renderPrep(){
       const frac = prepRemaining / 5;
       ringFg.style.strokeDashoffset = CIRC * (1 - frac);
@@ -416,7 +430,7 @@
 
   document.getElementById('soundToggle').addEventListener('click', () => {
     soundOn = !soundOn;
-    document.getElementById('soundToggle').textContent = soundOn ? '🔊 音を鳴らす' : '🔇 音を鳴らす';
+    document.getElementById('soundToggle').textContent = soundOn ? '🔊 音声案内を鳴らす' : '🔇 音声案内を鳴らす';
     if(soundOn && !audioCtx){
       try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
     }
