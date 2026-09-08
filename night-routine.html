@@ -80,6 +80,20 @@
     cursor:pointer;
   }
 
+  .sound-setup-toggle{
+    margin-top:14px;
+    width:100%;
+    padding:13px;
+    border:1.5px dashed var(--line);
+    border-radius:12px;
+    background:transparent;
+    color:var(--ink-soft);
+    font-family:inherit;
+    font-size:13.5px;
+    cursor:pointer;
+  }
+  .sound-setup-toggle.on{ color:var(--ink); border-style:solid; border-color: var(--ink); }
+
   .run-screen{ flex:1; display:flex; flex-direction:column; align-items:center; }
   .phase-label{
     font-family:'IBM Plex Mono', monospace;
@@ -188,6 +202,7 @@
   <div id="setupScreen" class="screen">
     <h1>夜のストレッチルーティン</h1>
     <div class="sub">ストレッチポール〜モビリティまで、順番通りに進みます。<br>終わったらそのままLifenoteへ。</div>
+    <button class="sound-setup-toggle" id="soundSetupToggle">🔇 音声案内 OFF（タップでON）</button>
     <button class="start-btn" id="startBtn">始める</button>
   </div>
 
@@ -254,6 +269,7 @@
   let running = false;
   let elapsedTotal = 0;
   let soundOn = false;
+  try{ soundOn = localStorage.getItem('nightRoutineVoice') === 'on'; }catch(e){}
   let audioCtx = null;
 
   const setupScreen = document.getElementById('setupScreen');
@@ -290,9 +306,11 @@
     try{
       if(!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
+      const t = /[。、！？]$/.test(text) ? text : text + '。';
+      const u = new SpeechSynthesisUtterance(t);
       u.lang = 'ja-JP';
-      u.rate = 0.95;
+      u.rate = 0.85;
+      u.pitch = 1.0;
       window.speechSynthesis.speak(u);
     }catch(e){}
   }
@@ -428,13 +446,33 @@
   document.getElementById('nextBtn').addEventListener('click', () => { loadStep(current + 1); });
   document.getElementById('prevBtn').addEventListener('click', () => { loadStep(current - 1); });
 
-  document.getElementById('soundToggle').addEventListener('click', () => {
-    soundOn = !soundOn;
-    document.getElementById('soundToggle').textContent = soundOn ? '🔊 音声案内を鳴らす' : '🔇 音声案内を鳴らす';
+  function syncSoundUI(){
+    const setupEl = document.getElementById('soundSetupToggle');
+    const runEl = document.getElementById('soundToggle');
+    if(setupEl){
+      setupEl.textContent = soundOn ? '🔊 音声案内 ON（タップでOFF）' : '🔇 音声案内 OFF（タップでON）';
+      setupEl.classList.toggle('on', soundOn);
+    }
+    if(runEl){
+      runEl.textContent = soundOn ? '🔊 音声案内を鳴らす' : '🔇 音声案内を鳴らす';
+    }
+  }
+
+  function setSoundOn(v){
+    soundOn = v;
+    try{ localStorage.setItem('nightRoutineVoice', v ? 'on' : 'off'); }catch(e){}
     if(soundOn && !audioCtx){
       try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
     }
-  });
+    if(soundOn){
+      speak('音声案内をオンにしました');
+    }
+    syncSoundUI();
+  }
+
+  document.getElementById('soundSetupToggle').addEventListener('click', () => setSoundOn(!soundOn));
+  document.getElementById('soundToggle').addEventListener('click', () => setSoundOn(!soundOn));
+  syncSoundUI();
 
   function finish(){
     clearInterval(timerId);
