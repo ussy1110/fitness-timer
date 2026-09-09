@@ -67,6 +67,19 @@
   }
   .sub{ color:var(--ink-soft); font-size:14px; margin-bottom:28px; }
 
+  .garmin-check{
+    font-family:'Source Serif 4', serif;
+    font-weight:700;
+    font-size:20px;
+    line-height:1.4;
+    text-align:center;
+    padding:16px 14px;
+    margin-bottom:20px;
+    border:1.5px solid var(--ink);
+    border-radius:14px;
+    background: rgba(35,40,35,0.06);
+  }
+
   .level-options{ display:flex; flex-direction:column; gap:10px; margin-bottom: auto;}
   .level-btn{
     text-align:left;
@@ -220,6 +233,7 @@
 
   <!-- SETUP SCREEN -->
   <div id="setupScreen" class="screen">
+    <div class="garmin-check">⌚ Garminの筋トレタイマー、オンにした？</div>
     <h1>火木・筋トレ20分</h1>
     <div class="sub">今日のBBレベルを選んでください</div>
     <div class="level-options" id="levelOptions">
@@ -273,8 +287,9 @@
 
   <!-- DONE SCREEN -->
   <div id="doneScreen" class="screen done-screen hidden">
-    <h1>おつかれさまでした</h1>
+    <h1>✅ おつかれさまでした</h1>
     <div class="done-stats" id="doneStats"></div>
+    <div class="sub" style="margin-bottom:32px;">Garminのタイマーも止めて、記録しておきましょう</div>
     <button class="start-btn" id="restartBtn" style="width:auto; padding:16px 32px;">もう一度</button>
   </div>
 
@@ -290,7 +305,7 @@
       {name:'パピー→キャット', sec:45, note:'胸を床へ→背中を丸める、をゆっくり往復'},
     ]},
     { id:'cardio', name:'心拍アップ', color:'#B5533C', ex:[
-      {name:'その場マーチ', sec:60, note:'ももを高く上げて、腕もしっかり振る'},
+      {name:'ジャンピングジャック', sec:60, note:'着地は膝を柔らかく。膝が気になる日は足踏みでもOK'},
       {name:'ステップタッチ', sec:60, note:'横に一歩ずつ、リズムよく体重移動'},
     ]},
     { id:'core', name:'コア', color:'#9C5B46', ex:[
@@ -304,21 +319,26 @@
     ]},
     { id:'upper', name:'上半身', color:'#2F5D62', ex:[
       {name:'膝つきプッシュアップ', sec:45, note:'頭から膝まで一直線、脇を軽く締める'},
-      {name:'ダンベルロウ', sec:45, note:'肩をすくめず、肩甲骨から引く'},
+      {name:'ダンベルロウ（右）', sec:30, note:'四つ這いで背中まっすぐ、肘を天井へ引く'},
+      {name:'ダンベルロウ（左）', sec:30, note:'反対側も同様に'},
       {name:'休憩（セット間インターバル）', sec:20, note:''},
       {name:'膝つきプッシュアップ', sec:45, note:'腰が反らないように'},
-      {name:'ダンベルロウ', sec:45, note:''},
+      {name:'ダンベルロウ（右）', sec:30, note:'四つ這いで背中まっすぐ、肘を天井へ引く'},
+      {name:'ダンベルロウ（左）', sec:30, note:''},
     ]},
     { id:'lower', name:'下半身', color:'#5C6B3E', ex:[
       {name:'スクワット', sec:45, note:'膝がつま先より内側に入らないように'},
       {name:'ヒップヒンジ', sec:45, note:'膝は軽く曲げたまま、お尻を後ろに引いて前傾。背中は丸めない'},
       {name:'ランジ（左右交互）', sec:60, note:'上体を起こしたまま、膝がつま先より前に出過ぎないように'},
+      {name:'5秒インターバル', sec:5, note:'次はグルートブリッジ'},
       {name:'グルートブリッジ', sec:45, note:'お尻を締めて骨盤を持ち上げる'},
       {name:'休憩（セット間インターバル）', sec:20, note:''},
       {name:'スクワット', sec:45, note:''},
       {name:'ヒップヒンジ', sec:45, note:''},
       {name:'ランジ（左右交互）', sec:60, note:''},
+      {name:'5秒インターバル', sec:5, note:'次はグルートブリッジ'},
       {name:'グルートブリッジ', sec:45, note:''},
+      {name:'5秒インターバル', sec:5, note:'次は相撲スクワット'},
       {name:'相撲スクワット', sec:70, note:'脚を大きく開き、つま先は外側45度。膝はつま先と同じ方向へ'},
     ]},
   ];
@@ -329,7 +349,7 @@
     }
     if(level === 'mid'){
       const trim = (phase, n) => ({ ...phase, ex: phase.ex.slice(0, n) });
-      return [PHASES_FULL[0], PHASES_FULL[1], PHASES_FULL[2], PHASES_FULL[3], trim(PHASES_FULL[4], 2), trim(PHASES_FULL[5], 4)];
+      return [PHASES_FULL[0], PHASES_FULL[1], PHASES_FULL[2], PHASES_FULL[3], trim(PHASES_FULL[4], 3), trim(PHASES_FULL[5], 5)];
     }
     return PHASES_FULL;
   }
@@ -361,10 +381,21 @@
     startBtn.disabled = false;
   });
 
+  const TRANSITION_NEXT_LABEL = {
+    cardio: '有酸素ウォームアップ',
+    core: 'デッドバグ',
+    balance: 'バランス',
+    upper: '膝つきプッシュアップ',
+    lower: 'スクワット',
+  };
+
   startBtn.addEventListener('click', () => {
     phases = buildLevel(selectedLevel);
     flatList = [];
     phases.forEach((p, pi) => {
+      if(pi > 0 && TRANSITION_NEXT_LABEL[p.id]){
+        flatList.push({ transition:true, phaseIdx: pi, sec:5, color:'#5b6058', nextLabel: TRANSITION_NEXT_LABEL[p.id] });
+      }
       p.ex.forEach((e) => {
         flatList.push({ phaseIdx: pi, name: e.name, sec: e.sec, note: e.note, color: p.color, phaseName: p.name });
       });
@@ -459,13 +490,19 @@
     const step = flatList[current];
     remaining = step.sec;
     document.documentElement.style.setProperty('--phase-color', step.color);
-    document.getElementById('phaseLabel').textContent = step.phaseName;
-    document.getElementById('exerciseName').textContent = step.name;
-    document.getElementById('exerciseNote').textContent = step.note;
+    if(step.transition){
+      document.getElementById('phaseLabel').textContent = 'インターバル';
+      document.getElementById('exerciseName').textContent = 'インターバル';
+      document.getElementById('exerciseNote').textContent = '次は' + step.nextLabel;
+    } else {
+      document.getElementById('phaseLabel').textContent = step.phaseName;
+      document.getElementById('exerciseName').textContent = step.name;
+      document.getElementById('exerciseNote').textContent = step.note;
+    }
     document.getElementById('progressLine').textContent = (current+1) + ' / ' + flatList.length;
     const nextItem = flatList[current+1];
     const nextPreviewEl = document.getElementById('nextPreview');
-    if(step.isTransition || !nextItem){
+    if(step.transition || !nextItem){
       nextPreviewEl.textContent = '';
     } else {
       nextPreviewEl.textContent = '次: ' + nextItem.name;
@@ -474,7 +511,7 @@
     updateRing();
     updateTimerLabel();
     updateFooter();
-    speak(step.name);
+    speak(step.transition ? ('次は' + step.nextLabel) : step.name);
   }
 
   function updateRing(){
