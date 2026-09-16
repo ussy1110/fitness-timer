@@ -94,6 +94,15 @@
   }
   .sound-setup-toggle.on{ color:var(--ink); border-style:solid; border-color: var(--ink); }
 
+  .version-tag{
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color: var(--ink-soft);
+    margin-top:14px;
+    opacity:.6;
+  }
+
   .run-screen{ flex:1; display:flex; flex-direction:column; align-items:center; }
   .phase-label{
     font-family:'IBM Plex Mono', monospace;
@@ -204,6 +213,7 @@
     <div class="sub">ストレッチポール〜モビリティまで、順番通りに進みます。<br>終わったらそのままLifenoteへ。</div>
     <button class="sound-setup-toggle" id="soundSetupToggle">🔇 音声案内 OFF（タップでON）</button>
     <button class="start-btn" id="startBtn">始める</button>
+    <div class="version-tag">v1.4.0 · 2026-09-08</div>
   </div>
 
   <!-- RUN SCREEN -->
@@ -433,13 +443,10 @@
       if('wakeLock' in navigator){
         wakeLock = await navigator.wakeLock.request('screen');
       }
-    }catch(e){ wakeLock = null; }
+    }catch(e){}
   }
   function releaseWakeLock(){
-    if(wakeLock){
-      wakeLock.release().catch(()=>{});
-      wakeLock = null;
-    }
+    try{ if(wakeLock){ wakeLock.release(); wakeLock = null; } }catch(e){}
   }
   document.addEventListener('visibilitychange', () => {
     if(document.visibilityState === 'visible' && running){
@@ -497,7 +504,6 @@
 
   function finish(){
     clearInterval(timerId);
-    running = false;
     releaseWakeLock();
     runScreen.classList.add('hidden');
     doneScreen.classList.remove('hidden');
