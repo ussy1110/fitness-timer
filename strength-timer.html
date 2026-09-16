@@ -67,17 +67,26 @@
   }
   .sub{ color:var(--ink-soft); font-size:14px; margin-bottom:28px; }
 
+  .prep-note{
+    font-size:14.5px;
+    font-weight:600;
+    color: var(--ink);
+    background: rgba(35,40,35,0.05);
+    border-radius:10px;
+    padding:12px 14px;
+    margin: -14px 0 24px;
+  }
+
   .garmin-check{
-    font-family:'Source Serif 4', serif;
+    font-size:15px;
     font-weight:700;
-    font-size:20px;
-    line-height:1.4;
+    color: var(--ink);
+    background: rgba(169,113,60,0.12);
+    border: 1.5px solid var(--mobility);
+    border-radius:10px;
+    padding:12px 14px;
+    margin-bottom:16px;
     text-align:center;
-    padding:16px 14px;
-    margin-bottom:20px;
-    border:1.5px solid var(--ink);
-    border-radius:14px;
-    background: rgba(35,40,35,0.06);
   }
 
   .level-options{ display:flex; flex-direction:column; gap:10px; margin-bottom: auto;}
@@ -121,6 +130,14 @@
     cursor:pointer;
   }
   .sound-setup-toggle.on{ color:var(--ink); border-style:solid; border-color: var(--ink); }
+
+  .version-tag{
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color: var(--ink-soft);
+    margin-top:14px;
+  }
 
   /* ---- Run screen ---- */
   .run-screen{ flex:1; display:flex; flex-direction:column; align-items:center; }
@@ -235,23 +252,21 @@
   <div id="setupScreen" class="screen">
     <div class="garmin-check">⌚ Garminの筋トレタイマー、オンにした？</div>
     <h1>火木・筋トレ20分</h1>
-    <div class="sub">今日のBBレベルを選んでください</div>
+    <div class="sub">自覚症状をチェックしてください</div>
+    <div class="prep-note">🏋️ 5kgダンベルと水を準備</div>
     <div class="level-options" id="levelOptions">
       <button class="level-btn" data-level="normal">
-        <span class="lv-title">🟢 BB50以上・通常</span>
+        <span class="lv-title">🟢 通常（自覚症状なし）</span>
         <span class="lv-desc">全フェーズ／上下半身2セット・約20分</span>
       </button>
-      <button class="level-btn" data-level="mid">
-        <span class="lv-title">🟡 BB35〜49・軽め</span>
-        <span class="lv-desc">全フェーズ／上半身・下半身は1周のみ・約13分</span>
-      </button>
       <button class="level-btn" data-level="low">
-        <span class="lv-title">🔴 BB34以下・ストレッチのみ</span>
-        <span class="lv-desc">胸椎モビリティのみ・約3分</span>
+        <span class="lv-title">🔴 自覚症状あり</span>
+        <span class="lv-desc">体が重い・だるい／関節の痛みや違和感／頭がぼんやり／気力が湧かない、のいずれか。胸椎モビリティのみ・約3分</span>
       </button>
     </div>
     <button class="sound-setup-toggle" id="soundSetupToggle">🔇 音声案内 OFF（タップでON）</button>
     <button class="start-btn" id="startBtn" disabled>開始</button>
+    <div class="version-tag">v1.8.0 · 2026-09-16</div>
   </div>
 
   <!-- RUN SCREEN -->
@@ -287,9 +302,8 @@
 
   <!-- DONE SCREEN -->
   <div id="doneScreen" class="screen done-screen hidden">
-    <h1>✅ おつかれさまでした</h1>
+    <h1>おつかれさまでした</h1>
     <div class="done-stats" id="doneStats"></div>
-    <div class="sub" style="margin-bottom:32px;">Garminのタイマーも止めて、記録しておきましょう</div>
     <button class="start-btn" id="restartBtn" style="width:auto; padding:16px 32px;">もう一度</button>
   </div>
 
@@ -347,10 +361,6 @@
     if(level === 'low'){
       return [PHASES_FULL[0]];
     }
-    if(level === 'mid'){
-      const trim = (phase, n) => ({ ...phase, ex: phase.ex.slice(0, n) });
-      return [PHASES_FULL[0], PHASES_FULL[1], PHASES_FULL[2], PHASES_FULL[3], trim(PHASES_FULL[4], 3), trim(PHASES_FULL[5], 5)];
-    }
     return PHASES_FULL;
   }
 
@@ -381,21 +391,27 @@
     startBtn.disabled = false;
   });
 
-  const TRANSITION_NEXT_LABEL = {
-    cardio: '有酸素ウォームアップ',
-    core: 'デッドバグ',
-    balance: 'バランス',
-    upper: '膝つきプッシュアップ',
-    lower: 'スクワット',
-  };
+  let wakeLock = null;
+  async function requestWakeLock(){
+    try{
+      if('wakeLock' in navigator){
+        wakeLock = await navigator.wakeLock.request('screen');
+      }
+    }catch(e){}
+  }
+  function releaseWakeLock(){
+    try{ if(wakeLock){ wakeLock.release(); wakeLock = null; } }catch(e){}
+  }
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible' && running){
+      requestWakeLock();
+    }
+  });
 
   startBtn.addEventListener('click', () => {
     phases = buildLevel(selectedLevel);
     flatList = [];
     phases.forEach((p, pi) => {
-      if(pi > 0 && TRANSITION_NEXT_LABEL[p.id]){
-        flatList.push({ transition:true, phaseIdx: pi, sec:5, color:'#5b6058', nextLabel: TRANSITION_NEXT_LABEL[p.id] });
-      }
       p.ex.forEach((e) => {
         flatList.push({ phaseIdx: pi, name: e.name, sec: e.sec, note: e.note, color: p.color, phaseName: p.name });
       });
@@ -403,6 +419,7 @@
     current = 0;
     elapsedTotal = 0;
     running = true;
+    requestWakeLock();
     setupScreen.classList.add('hidden');
     runScreen.classList.remove('hidden');
     renderPhaseTrack();
@@ -490,19 +507,13 @@
     const step = flatList[current];
     remaining = step.sec;
     document.documentElement.style.setProperty('--phase-color', step.color);
-    if(step.transition){
-      document.getElementById('phaseLabel').textContent = 'インターバル';
-      document.getElementById('exerciseName').textContent = 'インターバル';
-      document.getElementById('exerciseNote').textContent = '次は' + step.nextLabel;
-    } else {
-      document.getElementById('phaseLabel').textContent = step.phaseName;
-      document.getElementById('exerciseName').textContent = step.name;
-      document.getElementById('exerciseNote').textContent = step.note;
-    }
+    document.getElementById('phaseLabel').textContent = step.phaseName;
+    document.getElementById('exerciseName').textContent = step.name;
+    document.getElementById('exerciseNote').textContent = step.note;
     document.getElementById('progressLine').textContent = (current+1) + ' / ' + flatList.length;
     const nextItem = flatList[current+1];
     const nextPreviewEl = document.getElementById('nextPreview');
-    if(step.transition || !nextItem){
+    if(step.isTransition || !nextItem){
       nextPreviewEl.textContent = '';
     } else {
       nextPreviewEl.textContent = '次: ' + nextItem.name;
@@ -511,7 +522,7 @@
     updateRing();
     updateTimerLabel();
     updateFooter();
-    speak(step.transition ? ('次は' + step.nextLabel) : step.name);
+    speak(step.name);
   }
 
   function updateRing(){
@@ -622,6 +633,7 @@
 
   function finish(){
     clearInterval(timerId);
+    releaseWakeLock();
     runScreen.classList.add('hidden');
     doneScreen.classList.remove('hidden');
     const m = Math.floor(elapsedTotal/60), s = elapsedTotal%60;
