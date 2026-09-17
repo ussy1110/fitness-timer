@@ -253,7 +253,7 @@
     <div class="garmin-check">⌚ Garminの筋トレタイマー、オンにした？</div>
     <h1>火木・筋トレ20分</h1>
     <div class="sub">自覚症状をチェックしてください</div>
-    <div class="prep-note">🏋️ 5kgダンベルと水を準備</div>
+    <div class="prep-note">🏋️ 5kgダンベル・ストレッチポール・水を準備</div>
     <div class="level-options" id="levelOptions">
       <button class="level-btn" data-level="normal">
         <span class="lv-title">🟢 通常（自覚症状なし）</span>
@@ -266,7 +266,7 @@
     </div>
     <button class="sound-setup-toggle" id="soundSetupToggle">🔇 音声案内 OFF（タップでON）</button>
     <button class="start-btn" id="startBtn" disabled>開始</button>
-    <div class="version-tag">v1.8.0 · 2026-09-16</div>
+    <div class="version-tag">v1.9.1 · 2026-09-16</div>
   </div>
 
   <!-- RUN SCREEN -->
@@ -335,7 +335,6 @@
       {name:'膝つきプッシュアップ', sec:45, note:'頭から膝まで一直線、脇を軽く締める'},
       {name:'ダンベルロウ（右）', sec:30, note:'四つ這いで背中まっすぐ、肘を天井へ引く'},
       {name:'ダンベルロウ（左）', sec:30, note:'反対側も同様に'},
-      {name:'休憩（セット間インターバル）', sec:20, note:''},
       {name:'膝つきプッシュアップ', sec:45, note:'腰が反らないように'},
       {name:'ダンベルロウ（右）', sec:30, note:'四つ這いで背中まっすぐ、肘を天井へ引く'},
       {name:'ダンベルロウ（左）', sec:30, note:''},
@@ -415,6 +414,20 @@
       p.ex.forEach((e) => {
         flatList.push({ phaseIdx: pi, name: e.name, sec: e.sec, note: e.note, color: p.color, phaseName: p.name });
       });
+      if(pi < phases.length - 1){
+        const nextPhase = phases[pi + 1];
+        const nextFirst = nextPhase.ex[0];
+        flatList.push({
+          phaseIdx: pi + 1,
+          phaseName: 'つぎ',
+          name: nextFirst.name,
+          note: '5秒後にスタート',
+          color: '#5b6058',
+          sec: 5,
+          isTransition: true,
+          announce: '次は' + nextPhase.name + '、' + nextFirst.name + 'です'
+        });
+      }
     });
     current = 0;
     elapsedTotal = 0;
@@ -522,7 +535,7 @@
     updateRing();
     updateTimerLabel();
     updateFooter();
-    speak(step.name);
+    speak(step.announce || step.name);
   }
 
   function updateRing(){
@@ -638,6 +651,7 @@
     doneScreen.classList.remove('hidden');
     const m = Math.floor(elapsedTotal/60), s = elapsedTotal%60;
     document.getElementById('doneStats').textContent = '合計時間　' + m + '分' + s + '秒';
+    speak('お疲れ様でした');
   }
 
   document.getElementById('restartBtn').addEventListener('click', () => {
