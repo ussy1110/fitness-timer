@@ -213,7 +213,7 @@
     <div class="sub">ストレッチポール〜モビリティまで、順番通りに進みます。<br>終わったらそのままLifenoteへ。</div>
     <button class="sound-setup-toggle" id="soundSetupToggle">🔇 音声案内 OFF（タップでON）</button>
     <button class="start-btn" id="startBtn">始める</button>
-    <div class="version-tag">v1.4.0 · 2026-09-08</div>
+    <div class="version-tag">v1.5.0 · 2026-09-16</div>
   </div>
 
   <!-- RUN SCREEN -->
@@ -509,6 +509,7 @@
     doneScreen.classList.remove('hidden');
     const m = Math.floor(elapsedTotal/60), s = elapsedTotal%60;
     document.getElementById('doneStats').textContent = 'ストレッチ時間　' + m + '分' + s + '秒';
+    speak('お疲れ様でした');
   }
 
   document.getElementById('restartBtn').addEventListener('click', () => {
